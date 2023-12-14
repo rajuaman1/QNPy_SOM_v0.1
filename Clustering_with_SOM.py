@@ -61,7 +61,7 @@ def Train_SOM(scaled_curves,som_x = None,som_y = None,learning_rate = 0.1,sigma 
 
 def Train_SOM_with_stats(scaled_curves,som_x = None,som_y = None,learning_rate = 0.1,sigma = 1.0,topology = 'rectangular',\
                 neighborhood_function='gaussian',epochs = 50000,save_som = True,model_save_path = './',random_seed = 21,stat = 'q',\
-                        pca_init = True):
+                        pca_init = True,plot_frequency = 100):
     #Initialize and train a SOM on the given data
     default_som_grid_length = math.ceil(math.sqrt(math.sqrt(len(scaled_curves))))
     if som_x is None and som_y is None:
@@ -76,34 +76,37 @@ def Train_SOM_with_stats(scaled_curves,som_x = None,som_y = None,learning_rate =
     max_iter = epochs
     q_error = []
     t_error = []
+    indices_to_plot = []
     if stat == 'both':
         stat = 'qt'
-
     for i in tqdm(range(max_iter),desc = 'Evaluating SOM'):
         rand_i = np.random.randint(len(scaled_curves))
         som_model.update(scaled_curves[rand_i], som_model.winner(scaled_curves[rand_i]), i, max_iter)
-        if 'q' in stat:
-            q_error.append(som_model.quantization_error(scaled_curves))
-        if 't' in stat:
-            t_error.append(som_model.topographic_error(scaled_curves))
-    if 'q' in stat:
-        plt.plot(np.arange(max_iter), q_error, label='quantization error')
-    if 't' in stat:
-        plt.plot(np.arange(max_iter), t_error, label='topographic error')
-    plt.ylabel('error')
-    plt.xlabel('iteration index')
-    plt.legend()
-    plt.show()
-    
-            
+        if (i % plot_frequency == 0 or i == len(scaled_curves)-1) and plot_training:
+            indices_to_plot.append(i)
+            if 'q' in stat:
+                q_error.append(som_model.quantization_error(scaled_curves))
+            if 't' in stat:
+                t_error.append(som_model.topographic_error(scaled_curves))
     if save_som:
         with open(model_save_path+'som_model.p', 'wb') as outfile:
             pickle.dump(som_model, outfile)
         print('Model Saved')
     
-    return som_model, q_error,t_error
+    return som_model, q_error,t_error, indices_to_plot
 
-def Plot_SOM_Scaled_Average(som_model,scaled_curves,dba = True,figsize = (10,10),save_figs = False,figs_save_path = './'):
+def plot_training(training_metric_results,metric,plotting_frequency,indices_to_plot,figsize = (10,10),save_figs = True,fig_save_path = './'):
+    #Plots the metric given (quantization error or topographic error) 
+    plt.figure(figsize = figsize)
+    plt.plot(indices_to_plot,training_metric_results)
+    plt.ylabel(metric)
+    plt.xlabel('iteration index')
+    if save_figs:
+        if 'Plots' not in os.listdir():
+            os.makedirs(fig_save_path+'Plots')
+        plt.savefig(fig_save_path+'Model_Training_'+metric+'.png')  
+        
+def Plot_SOM_Scaled_Average(som_model,scaled_curves,dba = True,figsize = (10,10),save_figs = False,fig_save_path = './'):
     #Plot the scaled light curves for each cluster as well as the averaged light curve of each cluster
     #Dynamic Barymetric Time Averaging (Cite the papers listed on GitHub Repo (https://github.com/fpetitjean/DBA))
     som_x,som_y = som_model.distance_map().shape
