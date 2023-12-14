@@ -256,3 +256,28 @@ def plotStarburstMap(som):
         width=500,
         height=500) 
     fig.show()
+
+def outliers_detection(clusters_df,som,scaled_curves,ids,outlier_percentage = 0.2):
+    #Detects outliers that aren't quantized well as a percentage of the clusters
+    quantization_errors = np.linalg.norm(som.quantization(scaled_curves) - scaled_curves, axis=1)
+    error_treshold = np.percentile(quantization_errors, 
+                               100*(1-outliers_percentage)+5)
+    outlier_ids = np.array(ids)[quantization_errors>error_treshold]
+    outlier_cluster = []
+    for i in range(len(clus.ID)):
+        if str(clus.ID[i]) in outlier_ids:
+            outlier_cluster.append(clus.Cluster[i])
+    #Plot the number of outliers per cluster
+    plt.figure()
+    plt.hist(clus['Cluster'],bins = len(np.unique(clus.Cluster))-1,alpha = 0.35,label = 'Total number of clusters',edgecolor = 'k')
+    plt.hist(outlier_cluster,bins = len(np.unique(clus.Cluster))-1,alpha = 0.35,label = 'outliers',edgecolor = 'k')
+    plt.xlabel('Cluster')
+    plt.ylabel('No of Quasars')
+    plt.legend()
+    #Plot the treshold for quantization error
+    plt.figure()
+    plt.hist(quantization_errors,edgecolor = 'k',label = f'Threshold = {outlier_percentage}')
+    plt.axvline(error_treshold, color='k', linestyle='--')
+    plt.legend()
+    plt.xlabel('Quantization Error')
+    plt.ylabel('No of Quasars')
